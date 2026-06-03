@@ -1,5 +1,7 @@
 # cross-agent-memory-kit
 
+**English** | [Українська](README.uk.md)
+
 Reproducible configuration for [mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) on macOS and Linux machines, plus the custom Claude Code skill and post-session distillation hook that wrap it.
 
 This repo is the **source of truth**. Point any AI agent (Claude Code, Codex, Gemini, Cursor, Kiro, ...) at this folder and it has everything needed to reproduce the setup on a fresh machine.
