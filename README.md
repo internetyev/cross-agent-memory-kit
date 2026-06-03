@@ -254,6 +254,24 @@ Cursor scanner logs:
 ~/.local/state/cross-agent-memory-kit/logs/cursor-launchd.err.log
 ```
 
+### Windsurf
+
+Windsurf (Cascade) reads MCP servers from `~/.codeium/windsurf/mcp_config.json`, with the same `mcpServers` shape as Claude Code. You can also open it from the Cascade panel: click the MCPs icon, then Configure.
+
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "/Users/<you>/.local/share/mcp-memory-service-venv/bin/python",
+      "args": ["-m", "mcp_memory_service.server"],
+      "env": {}
+    }
+  }
+}
+```
+
+For the skill, paste `SKILL.md` into your Windsurf rules (global rules, or a file under `.windsurf/rules/`). Windsurf has no SessionEnd hook, so distill manually or on a schedule, the same way as Codex/Cursor.
+
 ### Gemini CLI
 
 Gemini CLI uses `~/.gemini/settings.json`:
@@ -276,6 +294,17 @@ Hook: same as Codex/Cursor - manual or scheduled invocation.
 ### Kiro.dev
 
 Kiro reads `~/.kiro/settings/mcp.json`. Same `mcpServers` shape as Claude Code. Skills get pasted into Kiro's steering doc.
+
+### Lovable
+
+Lovable is a cloud app builder, so it works differently from the local agents above: it connects to MCP servers by **URL**, not by spawning a local process. The stdio config in this repo does not apply directly - Lovable cannot reach a Python process on your machine.
+
+To use this memory server with Lovable, first run mcp-memory-service in a remote/HTTP transport so it has a reachable HTTPS endpoint (see the [mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) docs for its HTTP server mode). Then, in Lovable, open **Connectors > Chat connectors**, add a custom MCP server, and enter:
+
+- **Server URL:** your memory server's HTTPS endpoint
+- **Auth:** OAuth, bearer token, or API key as your endpoint requires (or none)
+
+Lovable connectors are per-user and can be revoked anytime under Connectors. There is no SessionEnd hook - Lovable runs in the cloud, so run the local distillation hook/scanners on whichever machine actually holds your session transcripts.
 
 ### Hermes Agent
 

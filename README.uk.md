@@ -250,6 +250,24 @@ bash scripts/install_cursor_watcher.sh
 ~/.local/state/cross-agent-memory-kit/logs/cursor-launchd.err.log
 ```
 
+### Windsurf
+
+Windsurf (Cascade) читає MCP-сервери з `~/.codeium/windsurf/mcp_config.json` із тією ж формою `mcpServers`, що й Claude Code. Його також можна відкрити з панелі Cascade: натисніть піктограму MCPs, потім Configure.
+
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "/Users/<you>/.local/share/mcp-memory-service-venv/bin/python",
+      "args": ["-m", "mcp_memory_service.server"],
+      "env": {}
+    }
+  }
+}
+```
+
+Для скіла вставте `SKILL.md` у правила Windsurf (глобальні правила або файл під `.windsurf/rules/`). Windsurf не має хука SessionEnd, тож дистилюйте вручну або за розкладом - так само, як для Codex/Cursor.
+
 ### Gemini CLI
 
 Gemini CLI використовує `~/.gemini/settings.json`:
@@ -272,6 +290,17 @@ Gemini CLI використовує `~/.gemini/settings.json`:
 ### Kiro.dev
 
 Kiro читає `~/.kiro/settings/mcp.json`. Та сама форма `mcpServers`, що й у Claude Code. Скіли вставляються в steering-документ Kiro.
+
+### Lovable
+
+Lovable - це хмарний застосунок-білдер, тож він працює інакше, ніж локальні агенти вище: він підключається до MCP-серверів за **URL**, а не запускаючи локальний процес. Конфіг stdio з цього репозиторію тут не діє напряму - Lovable не може дістатися до Python-процесу на вашій машині.
+
+Щоб використати цей сервер памʼяті з Lovable, спершу запустіть mcp-memory-service у віддаленому/HTTP-транспорті, щоб він мав доступний HTTPS-ендпоінт (див. документацію [mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) щодо режиму HTTP-сервера). Потім у Lovable відкрийте **Connectors > Chat connectors**, додайте власний MCP-сервер і вкажіть:
+
+- **Server URL:** HTTPS-ендпоінт вашого сервера памʼяті
+- **Auth:** OAuth, bearer-токен або API-ключ, як вимагає ваш ендпоінт (або без автентифікації)
+
+Конектори Lovable діють на рівні користувача, і їх будь-коли можна відкликати в Connectors. Хука SessionEnd немає - Lovable працює в хмарі, тож запускайте локальний хук/сканери дистиляції на тій машині, яка реально містить транскрипти ваших сесій.
 
 ### Hermes Agent
 
