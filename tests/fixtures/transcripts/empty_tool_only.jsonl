@@ -1,0 +1,2 @@
+{"timestamp":"2026-05-06T00:00:00Z","type":"tool_use","name":"read_file","input":{"path":"/tmp/file"}}
+{"timestamp":"2026-05-06T00:00:01Z","type":"tool_result","content":"ok"}

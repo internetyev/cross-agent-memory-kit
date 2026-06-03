@@ -1,0 +1,33 @@
+# Provider config for the post-session distillation hook.
+# Copy to `config/providers.yaml` (gitignored) to apply locally.
+#
+# `default_provider` picks which provider runs the hook by default.
+# Override per-invocation with the env var DISTILL_PROVIDER=<name>.
+#
+# `providers.<name>.model` overrides the built-in default model for that
+# provider. Leave empty / omit to use the built-in default.
+
+default_provider: claude-cli
+
+providers:
+  # Subscription-billed CLI providers (no API key needed; uses binary's login)
+  claude-cli:
+    model: claude-haiku-4-5-20251001
+  codex-cli:
+    # codex-cli's own model selector. e.g. "gpt-5.1", "gpt-5.1-mini", or low-
+    # reasoning aliases like "gpt-5.1-low" if your codex build supports them.
+    model: gpt-5.1-low
+  gemini-cli:
+    model: gemini-2.5-flash
+  cursor-cli:
+    model: sonnet-4
+
+  # Per-token API providers (need matching API key in .env)
+  anthropic-api:
+    model: claude-haiku-4-5
+  openai-api:
+    model: gpt-4o-mini
+  gemini-api:
+    model: gemini-1.5-flash
+  openrouter-api:
+    model: anthropic/claude-haiku-4.5

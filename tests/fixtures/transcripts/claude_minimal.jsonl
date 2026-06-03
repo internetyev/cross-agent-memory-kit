@@ -1,0 +1,2 @@
+{"timestamp":"2026-05-06T00:00:00Z","type":"user","cwd":"/tmp/claude","content":[{"type":"text","text":"Please add the memory distillation hook."}]}
+{"timestamp":"2026-05-06T00:01:00Z","type":"assistant","content":[{"type":"text","text":"Added the hook and documented the setup."}]}
