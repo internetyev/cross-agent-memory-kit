@@ -2,9 +2,11 @@
 
 **English** | [Українська](README.uk.md)
 
-Reproducible configuration for [mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) on macOS and Linux machines, plus the custom Claude Code skill and post-session distillation hook that wrap it.
+**What is it for:** AI coding agents start every session cold. They forget the decisions, conventions, and dead ends from your last conversation, so you keep re-explaining the same context. This kit gives them a persistent, self-updating memory: after each session it distills what happened into durable facts and stores them, so the next session - on any agent, on any of your machines - already knows.
 
-This repo is the **source of truth**. Point any AI agent (Claude Code, Codex, Gemini, Cursor, Kiro, ...) at this folder and it has everything needed to reproduce the setup on a fresh machine.
+Reproducible configuration for [mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) on macOS and Linux machines (not tested on Windows), plus the custom Claude Code skill and post-session distillation hook that wrap it.
+
+This repo is the **source of truth**. Point any AI agent (Claude Code, Codex, Gemini, Cursor, Windsurf, Lovable, Kiro, ...) at this folder and it has everything needed to reproduce the setup on a fresh machine.
 
 Current setup version: `0.2.0-dev` from `VERSION`.
 
