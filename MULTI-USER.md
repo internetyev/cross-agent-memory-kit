@@ -127,6 +127,85 @@ Run it again on each of that person's other devices with the **same** shared
 store and the **same** private store. Use a **different** private store for each
 different person.
 
+## Install by handing a prompt to your agent
+
+If you would rather have an AI agent (Claude Code, Codex, ...) do the setup for
+you, paste the prompt below into a session **in an empty working directory** and
+fill in the placeholders. It points the agent at this repo, has it read this
+guide, run the wizard, and wire up the config - while respecting the
+preservation-first rule (it will not delete an existing venv or memory DB).
+
+Create the Cloudflare resources first (see the section above), so you have the
+IDs the prompt asks for. The agent never edits your config blindly: it shows you
+the diff before writing and keeps tokens out of the repo.
+
+````text
+Set up the cross-agent-memory-kit MULTI-USER (multi-tenant) memory mode on this machine.
+
+Repo: https://github.com/internetyev/cross-agent-memory-kit
+
+Goal: one shared agent account is used by several people. I need HARD ISOLATION -
+each person gets their OWN private memory store plus one SHARED team/family store,
+backed by SEPARATE Cloudflare D1 + Vectorize databases so others physically cannot
+read a private store.
+
+My details:
+- I am the person:        <PERSON_SLUG>            e.g. alice  (lowercase, no spaces)
+- Agent to configure:     <AGENT>                  one of: claude | codex | cursor | gemini | kiro | hermes
+- Distillation provider:  <PROVIDER>               e.g. claude-cli (subscription, no API key)
+- SHARED store (same for everyone):
+    account id:   <SHARED_CF_ACCOUNT_ID>
+    D1 id:        <SHARED_D1_ID>
+    vectorize:    <SHARED_VECTORIZE_INDEX>         e.g. mcp-memory-shared
+    api token:    <SHARED_CF_API_TOKEN>
+- PRIVATE store (unique to me):
+    account id:   <PRIVATE_CF_ACCOUNT_ID>          (may equal the shared account)
+    D1 id:        <PRIVATE_D1_ID>                  (MUST differ from shared + other people)
+    vectorize:    <PRIVATE_VECTORIZE_INDEX>        e.g. mcp-memory-<PERSON_SLUG>
+    api token:    <PRIVATE_CF_API_TOKEN>           (ideally scoped to only this DB)
+
+If I have NOT created the Cloudflare resources yet, say so and stop - I will run
+`scripts/setup_multiuser_cloudflare.sh shared` (once for the team/family) and
+`scripts/setup_multiuser_cloudflare.sh private <PERSON_SLUG>` (once for me) first,
+then re-run you with the returned IDs. Do not invent IDs.
+
+Steps:
+1. Clone the repo (or reuse an existing checkout) into the current directory.
+2. Read MULTI-USER.md FIRST - it is the source of truth - and follow it.
+3. PRESERVATION-FIRST: if mcp-memory-service is already installed, do NOT delete or
+   recreate the venv (~/.local/share/mcp-memory-service-venv) or any existing
+   sqlite_vec.db. Reuse them.
+4. Run the wizard non-interactively with a Python 3.10+ interpreter:
+     python3 onboard_multiuser.py --yes \
+       --agent <AGENT> --provider <PROVIDER> --person <PERSON_SLUG> \
+       --shared-account-id <SHARED_CF_ACCOUNT_ID> --shared-d1-id <SHARED_D1_ID> \
+       --shared-vectorize <SHARED_VECTORIZE_INDEX> --shared-token <SHARED_CF_API_TOKEN> \
+       --private-account-id <PRIVATE_CF_ACCOUNT_ID> --private-d1-id <PRIVATE_D1_ID> \
+       --private-vectorize <PRIVATE_VECTORIZE_INDEX> --private-token <PRIVATE_CF_API_TOKEN>
+5. The wizard PRINTS config blocks (it never edits my agent config). Take the two
+   MCP server blocks it prints (`memory-shared` + `memory-private`) and merge them
+   into my agent config under the same mcpServers/mcp_servers key. For Claude Code
+   that is ~/.claude.json. Show me the exact diff before writing, and back up the
+   file first.
+6. For Claude Code: add the printed SessionEnd hook to ~/.claude/settings.json, and
+   install the multi-user retrieval skill:
+     cp skills/mcp-memory-multiuser/SKILL.md ~/.claude/skills/mcp-memory-multiuser/
+7. Verify per MULTI-USER.md: confirm the agent will expose both mcp__memory-shared__*
+   and mcp__memory-private__* tools after restart, and that .env contains
+   MEMORY_OWNER=<PERSON_SLUG>, MEMORY_DEFAULT_SCOPE=private, and the private
+   MCP_MEMORY_SQLITE_VEC_PATH so the post-session hook writes to my private store.
+8. Tell me to restart the agent, then summarize what you changed and what each store holds.
+
+Keep secrets out of anything you commit; the api tokens go only into the agent
+config env blocks and stay out of the repo.
+````
+
+**Private-only variant (no shared store).** If there is no sharing at all - each
+person fully isolated - skip the multi-user wizard. Instead tell the agent to run
+the standard `onboard.py` with the `hybrid` backend pointed at that person's
+**own** Cloudflare D1. That is per-person isolation with one `memory` server and
+the normal `mcp-memory-query` skill.
+
 ## What the wizard prints (Claude Code example)
 
 Two server blocks to merge under `mcpServers` in `~/.claude.json`:

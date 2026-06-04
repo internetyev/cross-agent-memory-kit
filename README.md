@@ -19,7 +19,7 @@ Current setup version: `0.2.0-dev` from `VERSION`.
 3. A **post-session distillation hook** that, after each Claude Code session, sends the transcript to a chosen LLM (Claude, Codex, Gemini, OpenRouter, ...) and stores the extracted artifacts + facts back into the memory service.
 4. **LangSmith tracing** for every distillation call, so you can see prompt, response, latency, and cost per session in the LangSmith dashboard.
 5. **Optional multi-device sync.** Switch the server to its hybrid backend and one memory is shared across all your machines, with Cloudflare (D1 + Vectorize) as the source of truth and a local SQLite cache per device. See [MULTI-DEVICE-SYNC.md](MULTI-DEVICE-SYNC.md).
-6. **Optional multi-user split (shared account).** When one agent account is used by several people - a company team or a family - give each person a **private** memory store plus a **shared** team/family store, with hard isolation (separate Cloudflare D1 databases, so others physically cannot read your private memory). Run `python3 onboard_multiuser.py`. See [MULTI-USER.md](MULTI-USER.md).
+6. **Optional multi-user split (shared account).** When one agent account is used by several people - a company team or a family - give each person a **private** memory store plus a **shared** team/family store, with hard isolation (separate Cloudflare D1 databases, so others physically cannot read your private memory). Run `python3 onboard_multiuser.py`, or hand the copy-paste install prompt in [MULTI-USER.md](MULTI-USER.md) to your agent. See [MULTI-USER.md](MULTI-USER.md).
 
 ## Repo layout
 
