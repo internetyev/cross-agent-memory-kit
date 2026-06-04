@@ -37,6 +37,12 @@ Both flow into the same memory service the agent queries during a session.
 
 **Solution:** this repo. `python3 onboard.py` (or `bash scripts/install.sh`) reproduces everything from a single `git clone`. Add the Cloudflare hybrid backend and the same memory follows you to every device.
 
+## 6. Shared account, separate memories (company team or family)
+
+**Problem:** one Claude (or Codex / Cursor / Gemini) account is used by several people - a company on a single shared subscription, or a family. The plain multi-device setup would merge everyone's memory into one pool, leaking personal notes and burying team-wide facts in noise.
+
+**Solution:** the multi-user mode (`python3 onboard_multiuser.py`). Each person gets a **private** memory store plus a **shared** team/family store, with hard isolation - separate Cloudflare D1 databases, so others physically cannot read a private store. The post-session hook writes to the private store by default; the `mcp-memory-multiuser` skill reads both and promotes a memory to shared only on a clear signal. A family can run extra tiers (e.g. a kids store the parents also see) as additional D1 databases under one account. See [MULTI-USER.md](MULTI-USER.md).
+
 ## What this is NOT for
 
 - Not a general-purpose knowledge base. Use a notes app or wiki for that.
