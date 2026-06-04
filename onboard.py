@@ -184,11 +184,11 @@ def build_server_env(backend: str, cf: dict) -> dict:
     }
 
 
-def render_block(agent: str, py: Path, server_env: dict) -> str:
+def render_block(agent: str, py: Path, server_env: dict, server_name: str = "memory") -> str:
     label, cfg_path, fmt, root_key = AGENTS[agent]
     args = ["-m", "mcp_memory_service.server"]
     if fmt == "json":
-        block = {root_key: {"memory": {
+        block = {root_key: {server_name: {
             "type": "stdio",
             "command": str(py),
             "args": args,
@@ -196,14 +196,14 @@ def render_block(agent: str, py: Path, server_env: dict) -> str:
         }}}
         return json.dumps(block, indent=2)
     if fmt == "toml":
-        lines = [f"[{root_key}.memory]",
+        lines = [f"[{root_key}.{server_name}]",
                  f'command = "{py}"',
                  f'args = {json.dumps(args)}']
         for k, v in server_env.items():
             lines.append(f'env.{k} = "{v}"')
         return "\n".join(lines)
     # yaml (hermes)
-    lines = [f"{root_key}:", "  memory:", f'    command: "{py}"',
+    lines = [f"{root_key}:", f"  {server_name}:", f'    command: "{py}"',
              f"    args: {json.dumps(args)}"]
     if server_env:
         lines.append("    env:")

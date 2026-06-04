@@ -17,24 +17,28 @@ Current setup version: `0.2.0-dev` from `VERSION`.
 3. A **post-session distillation hook** that, after each Claude Code session, sends the transcript to a chosen LLM (Claude, Codex, Gemini, OpenRouter, ...) and stores the extracted artifacts + facts back into the memory service.
 4. **LangSmith tracing** for every distillation call, so you can see prompt, response, latency, and cost per session in the LangSmith dashboard.
 5. **Optional multi-device sync.** Switch the server to its hybrid backend and one memory is shared across all your machines, with Cloudflare (D1 + Vectorize) as the source of truth and a local SQLite cache per device. See [MULTI-DEVICE-SYNC.md](MULTI-DEVICE-SYNC.md).
+6. **Optional multi-user split (shared account).** When one agent account is used by several people - a company team or a family - give each person a **private** memory store plus a **shared** team/family store, with hard isolation (separate Cloudflare D1 databases, so others physically cannot read your private memory). Run `python3 onboard_multiuser.py`. See [MULTI-USER.md](MULTI-USER.md).
 
 ## Repo layout
 
 ```
 cross-agent-memory-kit/
 ├── onboard.py                        # interactive install wizard (start here)
+├── onboard_multiuser.py              # wizard for a shared account (private + shared stores)
 ├── .env.example                      # template - copy to .env and fill in
 ├── .env                              # (gitignored) actual secrets
 ├── .gitignore
 ├── LICENSE
 ├── README.md                         # this file
 ├── MULTI-DEVICE-SYNC.md              # share one memory across devices (Cloudflare)
+├── MULTI-USER.md                     # one account, many people: private + shared memory
 ├── CHANGELOG.md
 ├── VERSION                           # machine-readable setup repo version
 ├── USECASES.md                       # what this setup is used for
 ├── LESSONS_LEARNED.md                # gotchas, design decisions
 ├── config/
-│   └── providers.example.yaml        # provider/model config for the hook
+│   ├── providers.example.yaml        # provider/model config for the hook
+│   └── profiles.example.yaml         # reference shape of one person's stores (multi-user)
 ├── hooks/
 │   └── distill_session.py            # Claude Code SessionEnd wrapper
 ├── distill/
@@ -52,13 +56,16 @@ cross-agent-memory-kit/
 ├── launchd/
 │   └── memory-distill.plist.template # rendered per-machine by the watcher installers
 ├── skills/
-│   └── mcp-memory-query/
-│       └── SKILL.md                  # the skill / system-prompt content
+│   ├── mcp-memory-query/
+│   │   └── SKILL.md                  # retrieval skill (single-user)
+│   └── mcp-memory-multiuser/
+│       └── SKILL.md                  # retrieval + write-routing skill (shared account)
 └── scripts/
     ├── install.sh                    # idempotent low-level installer
     ├── check_version.py              # VERSION / changelog / tag verification
     ├── install_codex_watcher.sh      # installs the Codex launchd scanner
-    └── install_cursor_watcher.sh     # installs the Cursor launchd scanner
+    ├── install_cursor_watcher.sh     # installs the Cursor launchd scanner
+    └── setup_multiuser_cloudflare.sh # creates shared + per-person Cloudflare D1/Vectorize
 ```
 
 ## Prerequisites
@@ -491,6 +498,7 @@ Release checklist:
 ## See also
 
 - [MULTI-DEVICE-SYNC.md](MULTI-DEVICE-SYNC.md) - share one memory across devices via the Cloudflare hybrid backend
+- [MULTI-USER.md](MULTI-USER.md) - one shared account, many people: a private store per person plus a shared store
 - [USECASES.md](USECASES.md) - what this setup is used for in practice
 - [CHANGELOG.md](CHANGELOG.md) - history of changes to this setup
 - [LESSONS_LEARNED.md](LESSONS_LEARNED.md) - gotchas and design decisions

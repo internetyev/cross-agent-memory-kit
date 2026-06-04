@@ -6,6 +6,9 @@ All notable changes to the cross-agent-memory-kit repo are documented here. Form
 
 ### Added
 
+- Multi-user support for a shared agent account (company team or family): each person gets a hard-isolated **private** memory store plus one **shared** team/family store, backed by separate Cloudflare D1 + Vectorize databases so others physically cannot read a private store. Adds `MULTI-USER.md` (architecture, threat model, family variant), `onboard_multiuser.py` (prints both `memory-shared` and `memory-private` MCP server blocks and routes the post-session hook to the private store), `scripts/setup_multiuser_cloudflare.sh` (creates shared + per-person Cloudflare resources), `config/profiles.example.yaml`, and `skills/mcp-memory-multiuser/SKILL.md` (reads both stores, writes private by default and shared only on a clear signal).
+- Opt-in identity tagging in `distill/storage.py`: when `MEMORY_OWNER` is set, hook-written memories carry `owner:<person>` and `scope:<private|shared>` tags plus matching metadata (`MEMORY_DEFAULT_SCOPE` sets the default). Unset = single-user behavior is unchanged.
+- `render_block()` in `onboard.py` now takes an optional `server_name` (default `memory`) so multiple MCP server blocks can be rendered for one agent.
 - `onboard.py` interactive install wizard: verifies Python, runs the installer, picks a provider, optionally configures the Cloudflare hybrid backend, writes `.env`/`providers.yaml`, and prints the MCP server block and Claude hook block to paste. Never edits agent configs or the memory DB.
 - `MULTI-DEVICE-SYNC.md` guide for sharing one memory across devices via the Cloudflare D1 + Vectorize hybrid backend.
 - `LICENSE` (MIT).
