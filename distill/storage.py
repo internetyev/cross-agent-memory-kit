@@ -52,6 +52,11 @@ async def store_results(
         distiller_model=distiller_model,
     )
     base_tags = provenance_tags(base_metadata, transcript.agent)
+    identity_tags, identity_metadata = _identity_tags_and_metadata()
+    if identity_tags:
+        base_tags = _dedupe_tags(base_tags + identity_tags)
+    if identity_metadata:
+        base_metadata = {**base_metadata, **identity_metadata}
     artifacts_stored = 0
     facts_stored = 0
 
@@ -225,6 +230,40 @@ def record_distill_run(
             )
     except Exception as exc:
         logger(f"  distill run record failed: {exc}")
+
+
+def _identity_tags_and_metadata() -> tuple[list[str], dict[str, str]]:
+    """Opt-in multi-user identity tagging.
+
+    On a single-user install both env vars are unset and this returns nothing,
+    so behavior is unchanged. On a multi-user install the distillation hook is
+    configured (via .env) with the person's identity, so every memory it writes
+    carries:
+
+      - ``owner:<person>``  / metadata ``owner``        - whose memory this is
+      - ``scope:<scope>``   / metadata ``memory_scope`` - private vs shared
+
+    The hook normally runs with ``MEMORY_DEFAULT_SCOPE=private`` because
+    distilled session memories default to the person's private store. ``scope``
+    is advisory: true isolation comes from the hook writing to that person's own
+    database (``MCP_MEMORY_SQLITE_VEC_PATH`` / private Cloudflare D1), not from
+    the tag. The tag just makes a memory's intended audience searchable.
+    """
+    owner = (os.environ.get("MEMORY_OWNER") or "").strip().lower()
+    scope = (
+        os.environ.get("MEMORY_SCOPE")
+        or os.environ.get("MEMORY_DEFAULT_SCOPE")
+        or ""
+    ).strip().lower()
+    tags: list[str] = []
+    metadata: dict[str, str] = {}
+    if owner:
+        tags.append(f"owner:{owner}")
+        metadata["owner"] = owner
+    if scope:
+        tags.append(f"scope:{scope}")
+        metadata["memory_scope"] = scope
+    return tags, metadata
 
 
 def _dedupe_tags(tags: list[str]) -> list[str]:

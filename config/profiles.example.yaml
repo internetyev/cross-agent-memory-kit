@@ -1,0 +1,64 @@
+# Multi-user memory profiles - reference shape.
+#
+# This file documents the two-store layout that onboard_multiuser.py produces.
+# It is descriptive: the wizard prints the real MCP server blocks for you to
+# paste, and the post-session hook is routed via .env (MEMORY_OWNER,
+# MEMORY_DEFAULT_SCOPE, MCP_MEMORY_SQLITE_VEC_PATH). Copy to profiles.yaml only
+# if you want a single place to keep one person's resolved values.
+#
+# Model: HARD ISOLATION. Each person runs TWO MCP memory servers:
+#   - memory-shared  : the one shared store everyone connects to
+#   - memory-private : that person's own store (others cannot read it)
+# Tools appear to the agent as mcp__memory-shared__* and mcp__memory-private__*.
+#
+# Privacy is enforced by SEPARATE databases + tokens, not by the scope tag.
+# The scope tag only records a memory's intended audience.
+
+# Who this machine's hook writes private memories as.
+person: alice
+
+# The store the post-session distillation hook writes into. Should be "private"
+# so a person's session learnings stay private by default; promote to shared
+# only deliberately (see skills/mcp-memory-multiuser/SKILL.md).
+default_write_scope: private
+
+stores:
+  # ---- SHARED: identical values for everyone on the team/family ----
+  shared:
+    mcp_server_name: memory-shared
+    backend: hybrid
+    # Local SQLite cache for the shared store (per device). Distinct path so it
+    # never collides with the private cache.
+    #   macOS: ~/Library/Application Support/mcp-memory/shared/sqlite_vec.db
+    #   Linux: ~/.local/share/mcp-memory/shared/sqlite_vec.db
+    sqlite_cache: "~/Library/Application Support/mcp-memory/shared/sqlite_vec.db"
+    cloudflare:
+      account_id: "<SHARED_ACCOUNT_ID>"
+      d1_database_id: "<SHARED_D1_DATABASE_ID>"
+      vectorize_index: "mcp-memory-shared"
+      # api_token lives in the MCP server env block / your secret store, never here.
+
+  # ---- PRIVATE: unique per person ----
+  private:
+    mcp_server_name: memory-private
+    backend: hybrid
+    #   macOS: ~/Library/Application Support/mcp-memory/private-<person>/sqlite_vec.db
+    #   Linux: ~/.local/share/mcp-memory/private-<person>/sqlite_vec.db
+    sqlite_cache: "~/Library/Application Support/mcp-memory/private-alice/sqlite_vec.db"
+    cloudflare:
+      account_id: "<PRIVATE_ACCOUNT_ID>"        # may equal the shared account
+      d1_database_id: "<PRIVATE_D1_DATABASE_ID>" # MUST differ from shared + other people
+      vectorize_index: "mcp-memory-alice"
+      # api_token: for a company, this is ideally a per-person token that can
+      # only touch this person's D1 + Vectorize, so the shared account cannot
+      # read it. For a family one token is usually fine.
+
+# Notes
+# -----
+# - A "private" store can be shared by a subgroup. E.g. a family might make one
+#   "kids" private store that the parents also connect to, plus the family-wide
+#   shared store. Just point those people's onboard_multiuser.py at the same
+#   private D1.
+# - Local-only private variant: if a person never switches devices, their
+#   private store can skip Cloudflare entirely (backend: sqlite_vec, just the
+#   sqlite_cache path). The shared store still needs Cloudflare to be shared.

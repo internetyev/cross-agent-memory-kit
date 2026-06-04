@@ -26,3 +26,6 @@ logs/
 
 # Local provider override (not committed)
 config/providers.yaml
+
+# Local multi-user profile (not committed; may hold resource IDs)
+config/profiles.yaml

@@ -13,7 +13,7 @@ from distill.adapters.codex import load_codex_transcript
 from distill.adapters.cursor import load_cursor_transcript
 from distill.adapters.fake import load_fake_transcript
 from distill.providers import DistillerUsage, _usage_from_codex_stdout, _usage_from_mapping
-from distill.storage import record_distill_run
+from distill.storage import _identity_tags_and_metadata, record_distill_run
 from wrappers.usage_report import build_report
 
 FIXTURES = Path(__file__).parent / "fixtures" / "transcripts"
@@ -162,6 +162,43 @@ class TranscriptAdapterTests(unittest.TestCase):
                 self.assertEqual(report["by_provider"][0]["provider"], "claude-cli")
             finally:
                 restore_env(old_path)
+
+
+class IdentityTaggingTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._saved = {k: os.environ.get(k) for k in ("MEMORY_OWNER", "MEMORY_SCOPE", "MEMORY_DEFAULT_SCOPE")}
+        for key in self._saved:
+            os.environ.pop(key, None)
+
+    def tearDown(self) -> None:
+        for key, value in self._saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    def test_unset_owner_yields_nothing(self) -> None:
+        tags, metadata = _identity_tags_and_metadata()
+        self.assertEqual(tags, [])
+        self.assertEqual(metadata, {})
+
+    def test_owner_and_default_scope_tagged(self) -> None:
+        os.environ["MEMORY_OWNER"] = "Alice"
+        os.environ["MEMORY_DEFAULT_SCOPE"] = "Private"
+        tags, metadata = _identity_tags_and_metadata()
+        self.assertIn("owner:alice", tags)
+        self.assertIn("scope:private", tags)
+        self.assertEqual(metadata["owner"], "alice")
+        self.assertEqual(metadata["memory_scope"], "private")
+
+    def test_memory_scope_overrides_default_scope(self) -> None:
+        os.environ["MEMORY_OWNER"] = "bob"
+        os.environ["MEMORY_DEFAULT_SCOPE"] = "private"
+        os.environ["MEMORY_SCOPE"] = "shared"
+        tags, metadata = _identity_tags_and_metadata()
+        self.assertIn("scope:shared", tags)
+        self.assertNotIn("scope:private", tags)
+        self.assertEqual(metadata["memory_scope"], "shared")
 
 
 def restore_env(old_path: str | None) -> None:
