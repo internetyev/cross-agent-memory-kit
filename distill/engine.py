@@ -67,18 +67,19 @@ def run_distillation(
     log_usage(logger, provider_result.usage, "provider-returned")
     distilled = provider_result.data
     if not distilled:
-        logger("  no distillation result")
+        reason = provider_result.error or "provider returned no distillation result"
+        logger(f"  distillation failed: {reason}")
         record_distill_run(
             transcript=transcript,
             usage=provider_result.usage,
             status="failed",
-            reason="no distillation result",
+            reason=reason,
             transcript_chars=len(text),
             prompt_chars=len(prompt),
             run_started_at=run_started_at,
             logger=logger,
         )
-        return DistillationRunResult(status="failed", reason="no distillation result")
+        return DistillationRunResult(status="failed", reason=reason)
 
     artifacts_returned = len(distilled.get("artifacts", []) or [])
     facts_returned = len(distilled.get("facts", []) or [])

@@ -6,6 +6,8 @@ All notable changes to the cross-agent-memory-kit repo are documented here. Form
 
 ### Added
 
+- Codex scanner failure state with exponential retry backoff, quarantine, a consecutive-failure circuit breaker, per-session state writes, bounded explicit session selection, and a single-instance lock.
+- Mocked tests for Codex final-message parsing, stdin prompt transport, provider failures, retry state, quarantine, scan limits, locking, tracing-disabled operation, and read-only retrieval instructions.
 - Multi-user support for a shared agent account (company team or family): each person gets a hard-isolated **private** memory store plus one **shared** team/family store, backed by separate Cloudflare D1 + Vectorize databases so others physically cannot read a private store. Adds `MULTI-USER.md` (architecture, threat model, family variant), `onboard_multiuser.py` (prints both `memory-shared` and `memory-private` MCP server blocks and routes the post-session hook to the private store), `scripts/setup_multiuser_cloudflare.sh` (creates shared + per-person Cloudflare resources), `config/profiles.example.yaml`, and `skills/mcp-memory-multiuser/SKILL.md` (reads both stores, writes private by default and shared only on a clear signal).
 - Opt-in identity tagging in `distill/storage.py`: when `MEMORY_OWNER` is set, hook-written memories carry `owner:<person>` and `scope:<private|shared>` tags plus matching metadata (`MEMORY_DEFAULT_SCOPE` sets the default). Unset = single-user behavior is unchanged.
 - `MULTI-USER.md` now includes a copy-paste install prompt so an AI agent can do the multi-user setup end to end (clone, read the guide, run the wizard non-interactively, wire up config preservation-first), plus a private-only variant note. `USECASES.md` gains use case 6 (shared account, separate memories).
@@ -17,6 +19,9 @@ All notable changes to the cross-agent-memory-kit repo are documented here. Form
 
 ### Changed
 
+- Memory retrieval is read-only by default. Session distillation now runs only through an explicit bounded freshness request or the finite scheduled watcher.
+- Codex CLI distillation now uses stdin, `--ignore-user-config`, `--output-schema`, and `--output-last-message`, and preserves actionable provider diagnostics.
+- Scheduled Codex scans now look back 14 days, process at most five sessions, and disable LangSmith tracing unless explicitly enabled.
 - Generalized for public release: the distillation prompt is now domain-neutral (software-project examples instead of one specific workflow); the client/project registry is opt-in via `MCP_MEMORY_CLIENTS_YAML` with no hardcoded default path; launchd jobs are rendered per-machine from `launchd/memory-distill.plist.template`; and the host label is configurable via `MCP_MEMORY_HOST_LABEL`.
 - Registry loader (`distill/registry.py`) now parses the new client/project `slug` field and the `domains` list (host + per-domain slug + primary flag + status + notes), and includes them in the prompt registry presented to the distiller. Bare-string domain entries are upgraded to mappings on read.
 - Distiller prompt now teaches identification by domain `host` or per-domain `slug`, and asks for a `domain` field on each artifact when the session is clearly scoped to one domain.

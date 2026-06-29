@@ -221,7 +221,7 @@ python wrappers/codex_session_scan.py --dry-run --quiet-minutes 0 --lookback-day
 bash scripts/install_codex_watcher.sh
 ```
 
-Інсталятор спершу позначає наявні тихі сесії Codex як `baseline` у `~/.local/state/cross-agent-memory-kit/codex-processed.json`, а потім запускає сканер щодня о 04:00 за локальним часом. Майбутні тихі сесії дистилюються один раз із `DISTILL_PROVIDER=codex-cli` та `DISTILL_MODEL=gpt-5.1-low`. Завдання launchd використовує `--limit 0`, тож щоденний запуск опрацьовує всі необроблені тихі сесії, а не зупиняється після малої партії. Виклики провайдера Codex використовують `codex exec --ephemeral`, тож виклики дистиляції не створюють нових логів сесій Codex, які сканер мав би поглинати.
+Інсталятор спершу позначає наявні тихі сесії Codex як `baseline` у `~/.local/state/cross-agent-memory-kit/codex-processed.json`, а потім запускає сканер щодня о 04:00 за локальним часом. Запланований запуск переглядає останні 14 днів і обробляє не більше п'яти сесій. Після трьох послідовних помилок спрацьовує запобіжник. Невдалі сесії повторюються з експоненційною затримкою та переходять у карантин після трьох автоматичних спроб. Виклики провайдера Codex передають запит через stdin, перевіряють JSON через `--output-schema`, читають фінальну відповідь із `--output-last-message` та використовують `--ignore-user-config` і `--ephemeral`.
 
 Логи сканера Codex:
 
@@ -360,7 +360,7 @@ providers:
   claude-cli:
     model: claude-haiku-4-5-20251001
   codex-cli:
-    model: gpt-5.1-low
+    model: gpt-5.5
   gemini-cli:
     model: gemini-2.5-flash
   openrouter-api:
@@ -371,10 +371,10 @@ providers:
 Типово виклики хука використовують `default_provider`, наразі `claude-cli` з `claude-haiku-4-5-20251001`. Використовуйте змінні середовища на межі хука/обгортки агента, щоб обрати інший провайдер для цього агента без зміни коду хука:
 
 ```bash
-DISTILL_PROVIDER=codex-cli DISTILL_MODEL=gpt-5.1-low python hooks/distill_session.py
+DISTILL_PROVIDER=codex-cli DISTILL_MODEL=gpt-5.5 python hooks/distill_session.py
 ```
 
-Наприклад, лишіть хук SessionEnd для Claude Code без префіксів, щоб він тримався Haiku. Для Codex обгортка-сканер виставляє `DISTILL_PROVIDER=codex-cli DISTILL_MODEL=gpt-5.1-low`, перш ніж викликати спільний рушій.
+Наприклад, лишіть хук SessionEnd для Claude Code без префіксів, щоб він тримався Haiku. Для Codex обгортка-сканер виставляє `DISTILL_PROVIDER=codex-cli` і використовує перевірений селектор `gpt-5.5`, перш ніж викликати спільний рушій. Перевизначайте `--model` лише після перевірки іншого точного селектора у встановленій версії CLI та обліковому записі.
 
 ## Архітектура дистиляції
 

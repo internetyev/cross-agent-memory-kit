@@ -54,17 +54,31 @@ section - the store is just the single local database.)
 
 ---
 
-## Refresh session memories first
+## Retrieval is read-only by default
 
-Before any query, run the Codex session scanner so recent quiet sessions are stored
-before retrieval:
+Query the existing memory service directly. Stored memories are retrieved on demand
+and are not injected automatically when a session starts.
+
+Normal searches, lists, health checks, token-usage reports, and mistake-note lookups
+must not run session scanners or other ingestion commands first. Use
+`mistake_note_search` proactively only when the task has meaningful execution risk
+and known pitfalls could change the approach.
+
+If a search returns no results, describe that result as "no matching memories were
+returned." Do not claim that no memory exists globally because a hybrid backend may
+still be synchronizing.
+
+## Explicit freshness procedure
+
+Only refresh session memories when the user explicitly asks to refresh, harvest, or
+ingest recent Codex sessions. Keep interactive scans bounded:
 
 ```bash
 ~/.local/share/mcp-memory-service-venv/bin/python \
   "$MCP_MEMORY_SETUP_REPO/wrappers/codex_session_scan.py" \
   --quiet-minutes 30 \
-  --lookback-days 3650 \
-  --limit 0
+  --lookback-days 2 \
+  --limit 3
 ```
 
 `$MCP_MEMORY_SETUP_REPO` is the local checkout of `cross-agent-memory-kit`
@@ -72,9 +86,10 @@ before retrieval:
 The venv path `~/.local/share/mcp-memory-service-venv/bin/python` is the same on
 every device.
 
-This is best effort: if the scanner fails, report the failure briefly and continue
-with the requested lookup. Do not run it with `--dry-run`. The active conversation
-may not be saved yet because sessions must be quiet for 30 minutes before scanning.
+Never use `--limit 0` or a multi-year lookback for interactive freshness. If the
+scanner fails, report its concise summary and continue with retrieval from the
+existing memory service. The active conversation may not be eligible because
+sessions must be quiet for 30 minutes before scanning.
 
 ---
 
@@ -196,8 +211,9 @@ what we learned today", use `mcp__memory__memory_harvest`:
 
 ## Edge cases
 
-- **No results**: tell the user nothing was found; offer to store something or try a
-  different query (exact mode vs. semantic, or broader terms).
+- **No results**: say no matching memories were returned; offer to try a different
+  query (exact mode vs. semantic, or broader terms). A hybrid backend may still be
+  synchronizing, so do not make a global absence claim.
 - **Too many results**: ask the user to narrow down with a tag, date range, or type
   filter.
 - **Service unavailable**: report the error clearly; do not silently fall back to

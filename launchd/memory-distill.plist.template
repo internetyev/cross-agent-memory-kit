@@ -21,15 +21,19 @@
     <string>--quiet-minutes</string>
     <string>30</string>
     <string>--lookback-days</string>
-    <string>3650</string>
+    <string>14</string>
     <string>--limit</string>
-    <string>0</string>
+    <string>5</string>
   </array>
 
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
     <string>__PATH__</string>
+    <key>LANGSMITH_TRACING</key>
+    <string>false</string>
+    <key>LANGCHAIN_TRACING_V2</key>
+    <string>false</string>
   </dict>
 
   <key>StartCalendarInterval</key>

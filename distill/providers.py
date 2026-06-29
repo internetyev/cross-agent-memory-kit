@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -64,6 +65,7 @@ class DistillerUsage:
 class ProviderResult:
     data: Optional[dict]
     usage: DistillerUsage
+    error: Optional[str] = None
 
 
 def load_provider_config(logger: Logger = null_logger) -> tuple[str, Optional[str]]:
@@ -89,6 +91,12 @@ def load_provider_config(logger: Logger = null_logger) -> tuple[str, Optional[st
 
 
 def traced(name: str) -> Callable:
+    tracing_value = os.environ.get("LANGSMITH_TRACING") or os.environ.get("LANGCHAIN_TRACING_V2")
+    if str(tracing_value or "").lower() not in {"1", "true", "yes", "on"}:
+        def passthrough(fn):
+            return fn
+
+        return passthrough
     try:
         from langsmith import traceable
 
@@ -186,22 +194,114 @@ def _call_claude_cli(prompt: str, model: str, logger: Logger) -> ProviderResult:
 @traced("distill.codex-cli")
 def _call_codex_cli(prompt: str, model: Optional[str], logger: Logger) -> ProviderResult:
     started = time.perf_counter()
-    if not shutil.which("codex"):
-        logger("  codex CLI not found")
-        return ProviderResult(None, _zero_usage("codex-cli", model, started))
-    cmd = ["codex", "exec", "--skip-git-repo-check", "--ephemeral", "--color", "never"]
-    if model:
-        cmd.extend(["--model", model])
-    cmd.append(prompt)
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)
-    if result.returncode != 0:
-        logger(f"  codex exec failed: {(result.stderr or result.stdout)[-300:]}")
-        return ProviderResult(None, _usage("codex-cli", model, started))
-    out = result.stdout
-    usage = _usage_from_codex_stdout("codex-cli", model, out, started, logger)
-    marker = out.rfind("tokens used")
-    region = out[marker:] if marker != -1 else out[-8000:]
-    return ProviderResult(_extract_json_object(region) or _extract_json_object(out), usage)
+    cli = shutil.which("codex")
+    if not cli:
+        error = "codex CLI not found"
+        logger(f"  {error}")
+        return ProviderResult(None, _zero_usage("codex-cli", model, started), error)
+
+    with tempfile.TemporaryDirectory(prefix="memory-distill-codex-") as tmpdir:
+        schema_path = Path(tmpdir) / "response-schema.json"
+        output_path = Path(tmpdir) / "last-message.json"
+        schema_path.write_text(json.dumps(_codex_response_schema()))
+        cmd = [
+            cli,
+            "exec",
+            "--ignore-user-config",
+            "--skip-git-repo-check",
+            "--ephemeral",
+            "--sandbox",
+            "read-only",
+            "--color",
+            "never",
+            "--output-schema",
+            str(schema_path),
+            "--output-last-message",
+            str(output_path),
+        ]
+        if model:
+            cmd.extend(["--model", model])
+        cmd.append("-")
+        try:
+            result = subprocess.run(
+                cmd,
+                input=prompt,
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+        except subprocess.TimeoutExpired:
+            error = "codex exec timed out after 600 seconds"
+            logger(f"  {error}")
+            return ProviderResult(None, _usage("codex-cli", model, started), error)
+
+        usage = _usage_from_codex_stdout("codex-cli", model, result.stdout, started, logger)
+        diagnostics = _compact_diagnostics(result.stderr or result.stdout)
+        if result.returncode != 0:
+            error = f"codex exec failed with exit {result.returncode}: {diagnostics or 'no diagnostics'}"
+            logger(f"  {error}")
+            return ProviderResult(None, usage, error)
+
+        final_text = output_path.read_text() if output_path.exists() else ""
+        if not final_text.strip():
+            error = f"codex exec returned no final message: {diagnostics or 'stdout and stderr were empty'}"
+            logger(f"  {error}")
+            return ProviderResult(None, usage, error)
+        try:
+            parsed = json.loads(final_text)
+        except json.JSONDecodeError as exc:
+            error = f"codex final message was malformed JSON at line {exc.lineno} column {exc.colno}"
+            logger(f"  {error}; final_message={final_text[:300]!r}")
+            return ProviderResult(None, usage, error)
+        if not isinstance(parsed, dict):
+            error = f"codex final message must be a JSON object, got {type(parsed).__name__}"
+            logger(f"  {error}")
+            return ProviderResult(None, usage, error)
+        return ProviderResult(parsed, usage)
+
+
+def _codex_response_schema() -> dict[str, Any]:
+    nullable_string = {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    return {
+        "type": "object",
+        "properties": {
+            "artifacts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "client_or_project": {"type": "string"},
+                        "domain": nullable_string,
+                        "type": {"type": "string"},
+                        "path": nullable_string,
+                        "summary": {"type": "string"},
+                    },
+                    "required": ["client_or_project", "domain", "type", "path", "summary"],
+                    "additionalProperties": False,
+                },
+            },
+            "facts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "content": {"type": "string"},
+                        "tags": {"type": "array", "items": {"type": "string"}},
+                        "memory_type": {"type": "string"},
+                    },
+                    "required": ["content", "tags", "memory_type"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["artifacts", "facts"],
+        "additionalProperties": False,
+    }
+
+
+def _compact_diagnostics(text: str, limit: int = 600) -> str:
+    compact = " ".join(text.strip().split())
+    return compact[-limit:]
 
 
 @traced("distill.gemini-cli")

@@ -26,7 +26,7 @@ mkdir -p "$HOME/Library/LaunchAgents" "$STATE_ROOT/logs"
   --mark-existing \
   --quiet-minutes 30 \
   --lookback-days 3650 \
-  --limit 0
+  --limit 100000
 
 # Render the template -> destination plist.
 sed \

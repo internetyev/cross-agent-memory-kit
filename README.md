@@ -225,7 +225,25 @@ Install the macOS launchd watcher:
 bash scripts/install_codex_watcher.sh
 ```
 
-The installer first marks existing quiet Codex sessions as `baseline` in `~/.local/state/cross-agent-memory-kit/codex-processed.json`, then runs the scanner daily at 04:00 local time. Future quiet sessions are distilled once with `DISTILL_PROVIDER=codex-cli` and `DISTILL_MODEL=gpt-5.1-low`. The launchd job uses `--limit 0` so the daily run drains all unprocessed quiet sessions instead of stopping after a small batch. Codex provider calls use `codex exec --ephemeral` so distillation calls do not create new Codex session logs for the scanner to ingest.
+The installer first marks existing quiet Codex sessions as `baseline` in `~/.local/state/cross-agent-memory-kit/codex-processed.json`, then runs the scanner daily at 04:00 local time. The scheduled scan looks back 14 days and handles at most five sessions. It stops after three consecutive failures, retries failed sessions with exponential backoff, and quarantines a session after three automatic attempts. State is saved after each handled session, and a file lock prevents overlapping scans.
+
+Codex provider calls pass the prompt through stdin and read the validated JSON response from `--output-last-message` under `--output-schema`. They use `--ignore-user-config` so unrelated settings in `~/.codex/config.toml` cannot break scheduled distillation, and `--ephemeral` prevents the provider call from creating a new scanner input. The scanner defaults to the verified `gpt-5.5` selector. Pass `--model` to override it after verifying another exact selector with the installed CLI and account.
+
+Scheduled scans set `LANGSMITH_TRACING=false` and `LANGCHAIN_TRACING_V2=false`. Tracing remains available for manual runs by explicitly setting `LANGSMITH_TRACING=true`.
+
+Retry one quarantined session in a bounded run:
+
+```bash
+python wrappers/codex_session_scan.py --session-path /absolute/path/to/session.jsonl --retry-quarantined --limit 1
+```
+
+Reset a known failure record without deleting processed state:
+
+```bash
+python wrappers/codex_session_scan.py --reset-failure SESSION_ID --dry-run --limit 1
+```
+
+Historical `distill_runs` are retained. If cleanup is ever required, first copy the SQLite database to a dated backup, then run a separately reviewed SQL delete command. The installer and scanner do not delete historical runs.
 
 Codex scanner logs:
 
@@ -364,7 +382,7 @@ providers:
   claude-cli:
     model: claude-haiku-4-5-20251001
   codex-cli:
-    model: gpt-5.1-low
+    model: gpt-5.5
   gemini-cli:
     model: gemini-2.5-flash
   openrouter-api:
@@ -375,10 +393,10 @@ providers:
 By default, hook invocations use `default_provider`, currently `claude-cli` with `claude-haiku-4-5-20251001`. Use environment variables at the agent hook / wrapper boundary to select another provider for that agent without changing hook code:
 
 ```bash
-DISTILL_PROVIDER=codex-cli DISTILL_MODEL=gpt-5.1-low python hooks/distill_session.py
+DISTILL_PROVIDER=codex-cli DISTILL_MODEL=gpt-5.5 python hooks/distill_session.py
 ```
 
-For example, keep the Claude Code SessionEnd hook unprefixed so it stays on Haiku. For Codex, the scanner wrapper sets `DISTILL_PROVIDER=codex-cli DISTILL_MODEL=gpt-5.1-low` before it calls the shared engine.
+For example, keep the Claude Code SessionEnd hook unprefixed so it stays on Haiku. For Codex, the scanner wrapper sets `DISTILL_PROVIDER=codex-cli` and defaults to the verified `gpt-5.5` selector before it calls the shared engine. Override `--model` only when another exact selector has been verified with the installed CLI and account.
 
 ## Distillation architecture
 

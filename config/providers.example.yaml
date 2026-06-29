@@ -14,9 +14,8 @@ providers:
   claude-cli:
     model: claude-haiku-4-5-20251001
   codex-cli:
-    # codex-cli's own model selector. e.g. "gpt-5.1", "gpt-5.1-mini", or low-
-    # reasoning aliases like "gpt-5.1-low" if your codex build supports them.
-    model: gpt-5.1-low
+    # Verify the exact selector after Codex CLI or account changes.
+    model: gpt-5.5
   gemini-cli:
     model: gemini-2.5-flash
   cursor-cli:

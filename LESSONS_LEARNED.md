@@ -54,7 +54,11 @@ When Claude Code already has `mcp-memory-service` installed, adding Codex, Curso
 
 The hook already supports `DISTILL_PROVIDER` and `DISTILL_MODEL`, so agent-specific model selection does not require transcript-source detection in code. The invoking agent, wrapper, or scheduled job should set the env vars it needs.
 
-**How to apply:** keep Claude Code's SessionEnd command unprefixed so it uses `default_provider` (`claude-cli` Haiku). For Codex distillation, run the same hook with `DISTILL_PROVIDER=codex-cli DISTILL_MODEL=gpt-5.1-low`. Apply the same pattern for Cursor, Gemini, or API-backed providers.
+**How to apply:** keep Claude Code's SessionEnd command unprefixed so it uses `default_provider` (`claude-cli` Haiku). For Codex distillation, run the same hook with `DISTILL_PROVIDER=codex-cli` and the verified `gpt-5.5` selector. Override it only after another exact selector is verified with the installed CLI and account. Apply the same pattern for Cursor, Gemini, or API-backed providers.
+
+## CLI automation needs an isolated configuration and output contract
+
+Interactive CLI configuration changes independently of scheduled automation. A valid setting for one Codex CLI release can prevent another release from starting before it reads the prompt. Scheduled calls should isolate themselves from mutable user configuration, pass large prompts through stdin, request a schema-constrained final response, and preserve stderr when the process exits or returns no parseable result.
 
 ## L12 - Adapters normalize transcripts; wrappers own triggers and state
 
